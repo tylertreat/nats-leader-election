@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"flag"
 	"fmt"
 
@@ -64,4 +65,23 @@ func handleState(state graft.State) {
 	default:
 		panic(fmt.Sprintf("Unknown state: %s", state))
 	}
+}
+
+type logPositionHandler struct {
+	logIndex uint32
+}
+
+func (l *logPositionHandler) CurrentLogPosition() []byte {
+	buf := make([]byte, 4)
+	binary.BigEndian.PutUint32(buf, l.logIndex)
+	return buf
+}
+
+func (l logPositionHandler) GrantVote(position []byte) bool {
+	p := binary.BigEndian.Uint32(position)
+	x := binary.BigEndian.Uint32(position) >= l.logIndex
+	if !x {
+		fmt.Printf("Candidate's log (%d) is behind node's log (%d), rejecting vote request\n", p, l.logIndex)
+	}
+	return x
 }
